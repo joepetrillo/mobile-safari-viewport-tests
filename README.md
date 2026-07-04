@@ -1,7 +1,11 @@
 # mobile-safari-viewport-tests
 
-Use Fable for planning and coordination. For anything you can scope into a clean subtask, start a Composer 2.5 subagent.
+Diagnostic page for iOS Safari viewport, dialog positioning, and chrome background behavior.
 
-Give each subagent a clear goal, the relevant context, and what to bring back. Don't have them invent the plan. Run independent pieces in parallel.
+## Usage
 
-When they return, review the results before you merge anything. If something's off, rewrite the brief and spin another, don't silently patch over it yourself unless it's trivial.
+Open `ios-safari-viewport-test.html` on a **real iPhone in Safari** (not desktop dev tools or simulators).
+
+1. Watch the sticky stats bar while scrolling and collapsing the URL bar.
+2. Open each dialog technique card one at a time and log gaps, jumps, or clipping.
+3. Scroll through the background chapters at the bottom to observe how page background fills the status-bar strip and URL-bar chrome without `theme-color`.
