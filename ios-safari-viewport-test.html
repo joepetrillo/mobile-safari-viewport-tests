@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>iOS Safari Viewport & Dialog Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --stats-h: 3.25rem;
+      --card-gap: 0.75rem;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --surface: #f8fafc;
+      --card-bg: #fff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+      --panel-bg: #fff;
+      --backdrop-dim: rgba(15, 23, 42, 0.55);
+    }
+
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background: var(--surface);
+      color: var(--text);
+      line-height: 1.45;
+      padding-top: var(--stats-h);
+    }
+
+    /* ── Sticky stats bar ── */
+    .stats-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.75rem;
+      align-items: center;
+      min-height: var(--stats-h);
+      padding: 0.4rem 0.75rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+      border-bottom: 2px solid var(--accent);
+    }
+    .stats-bar strong { color: #93c5fd; font-weight: 600; }
+    .stats-bar span { white-space: nowrap; }
+
+    /* ── Main content ── */
+    .page-header {
+      padding: 1rem 1rem 0.5rem;
+    }
+    .page-header h1 { font-size: 1.25rem; margin-bottom: 0.35rem; }
+    .page-header p { font-size: 0.85rem; color: var(--muted); }
+
+    .section-title {
+      padding: 1.25rem 1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .card-list {
+      list-style: none;
+      padding: 0 1rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: var(--card-gap);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      padding: 0.85rem 1rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-dark);
+      margin-bottom: 0.25rem;
+    }
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+    .card-expect {
+      font-size: 0.75rem;
+      color: #b45309;
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      padding: 0.35rem 0.5rem;
+      margin-bottom: 0.65rem;
+      border-radius: 0 0.25rem 0.25rem 0;
+    }
+    .card button {
+      width: 100%;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card button:active { background: var(--accent-dark); }
+
+    /* ── Dialog shared ── */
+    .dialog-root {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .dialog-root.is-open { display: flex; }
+
+    .dialog-backdrop {
+      position: absolute;
+      inset: 0;
+      background: var(--backdrop-dim);
+    }
+
+    .dialog-panel {
+      position: relative;
+      z-index: 1;
+      background: var(--panel-bg);
+      border-radius: 1rem 1rem 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .dialog-panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 1rem 1rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .dialog-panel-header h2 { font-size: 1rem; }
+    .dialog-panel-header p { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+    .dialog-close {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      border: none;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: var(--text);
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dialog-body {
+      padding: 0.75rem 1rem;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .dialog-footer {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+    .dialog-footer button {
+      flex: 1;
+      padding: 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 0.45rem;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dialog-footer .btn-confirm {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* Technique-specific overlay sizing */
+    .dlg-100vh { inset: 0; height: 100vh; }
+    .dlg-100svh { inset: 0; height: 100svh; }
+    .dlg-100lvh { inset: 0; height: 100lvh; }
+    .dlg-100dvh { inset: 0; height: 100dvh; }
+    .dlg-inset0 { inset: 0; }
+
+    /* Technique 7: backdrop compare */
+    .dlg-backdrop-compare .dialog-backdrop { display: none; }
+    .backdrop-split {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .backdrop-half {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      text-align: center;
+      padding: 0.5rem;
+    }
+    .backdrop-half--solid { background: rgba(15, 23, 42, 0.65); }
+    .backdrop-half--blur {
+      background: rgba(15, 23, 42, 0.25);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+
+    /* Technique 8: safe-area compare */
+    .safe-area-compare .compare-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .compare-box {
+      border: 2px dashed var(--border);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      font-size: 0.7rem;
+    }
+    .compare-box-label {
+      padding: 0.35rem;
+      background: #f1f5f9;
+      font-weight: 700;
+      text-align: center;
+    }
+    .compare-box-footer {
+      padding: 0.5rem;
+      background: #e2e8f0;
+      text-align: center;
+      font-weight: 600;
+    }
+    .compare-box-footer.with-safe {
+      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Technique 9: scrollable footer compare */
+    .scroll-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .scroll-demo {
+      border: 2px dashed var(--border);
+      border-radius: 0.5rem;
+      height: 140px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: 0.65rem;
+    }
+    .scroll-demo-label {
+      padding: 0.3rem;
+      background: #f1f5f9;
+      font-weight: 700;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .scroll-demo-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.35rem;
+      background: #fff;
+    }
+    .scroll-demo-body p { margin-bottom: 0.5rem; }
+    .scroll-demo-footer-outside {
+      padding: 0.35rem;
+      background: #cbd5e1;
+      text-align: center;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .scroll-demo-footer-sticky {
+      position: sticky;
+      bottom: 0;
+      padding: 0.35rem;
+      background: #cbd5e1;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* ── Background chapters section ── */
+    .chapters-intro {
+      padding: 0 1rem 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-top: 3px solid var(--border);
+      margin-top: 1rem;
+      padding-top: 1rem;
+    }
+
+    .chapter {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-bottom: 4px solid rgba(0,0,0,0.15);
+    }
+    .chapter-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      margin-bottom: 0.5rem;
+      align-self: flex-start;
+    }
+    .chapter h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .chapter p {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.5;
+      max-width: 36rem;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .chapter-expect {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      background: rgba(0,0,0,0.2);
+      border-left: 3px solid rgba(255,255,255,0.6);
+      border-radius: 0 0.35rem 0.35rem 0;
+      font-size: 0.75rem;
+      color: #fff;
+    }
+
+    /* Chapter backgrounds applied via classes on chapter elements */
+    .ch-html-red { background-color: #dc2626; }
+    .ch-body-teal { background-color: #0d9488; }
+    .ch-fixed-purple .chapter-fixed-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-color: #7c3aed;
+      pointer-events: none;
+    }
+    .ch-html-img {
+      background-color: #1e293b;
+      background-image: linear-gradient(135deg, #f97316 0%, #db2777 50%, #7c3aed 100%);
+      background-size: cover;
+      background-attachment: fixed;
+    }
+    .ch-body-img {
+      background-color: transparent;
+    }
+    .ch-body-img .chapter-inner { background: transparent; }
+    .ch-body-img-body {
+      /* body bg set via JS when entering chapter */
+    }
+    .ch-overscroll-none {
+      overscroll-behavior: none;
+      background-color: #059669;
+    }
+    .ch-html-vs-body {
+      background-color: #f59e0b;
+    }
+    .ch-html-vs-body .chapter-note code {
+      background: rgba(0,0,0,0.2);
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.2rem;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Live stats bar -->
+  <div class="stats-bar" id="statsBar" aria-live="polite">
+    <span><strong>innerH</strong> <span id="stat-innerH">—</span></span>
+    <span><strong>vv.h</strong> <span id="stat-vvH">—</span></span>
+    <span><strong>vv.top</strong> <span id="stat-vvTop">—</span></span>
+    <span><strong>scrollY</strong> <span id="stat-scrollY">—</span></span>
+  </div>
+
+  <header class="page-header">
+    <h1>iOS Safari Viewport Test</h1>
+    <p>Real iPhone Safari only. Scroll, collapse the URL bar, open dialogs, note gaps/jumps. Log findings by technique label.</p>
+  </header>
+
+  <h2 class="section-title">Dialog positioning techniques</h2>
+  <ul class="card-list" id="cardList"></ul>
+
+  <div class="chapters-intro">
+    <strong>Background / chrome fill chapters</strong> — scroll down through full-height sections.
+    No <code>theme-color</code> meta is set. Safari samples the page background for the status-bar strip (top, on bounce) and URL-bar area (bottom). Each chapter labels which element's background should appear where.
+  </div>
+
+  <div id="chapters"></div>
+
+  <!-- Dialog templates injected by JS -->
+  <div id="dialogMount"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ── Stats bar ── */
+      var statInnerH = document.getElementById('stat-innerH');
+      var statVvH = document.getElementById('stat-vvH');
+      var statVvTop = document.getElementById('stat-vvTop');
+      var statScrollY = document.getElementById('stat-scrollY');
+
+      function updateStats() {
+        var vv = window.visualViewport;
+        statInnerH.textContent = Math.round(window.innerHeight) + 'px';
+        statVvH.textContent = vv ? Math.round(vv.height) + 'px' : 'n/a';
+        statVvTop.textContent = vv ? Math.round(vv.offsetTop) + 'px' : 'n/a';
+        statScrollY.textContent = Math.round(window.scrollY) + 'px';
+      }
+
+      window.addEventListener('resize', updateStats);
+      window.addEventListener('scroll', updateStats, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateStats);
+        window.visualViewport.addEventListener('scroll', updateStats);
+      }
+      updateStats();
+
+      /* ── Dialog technique definitions ── */
+      var techniques = [
+        {
+          id: '100vh',
+          label: '1 · height: 100vh',
+          desc: 'Overlay container uses explicit height: 100vh.',
+          expect: 'Expect: footer clipped or misaligned vs visible viewport; gap or overflow when toolbar resizes.',
+          overlayClass: 'dlg-100vh',
+          panelTitle: '100vh overlay',
+          panelDesc: 'Classic full-viewport height. Often taller than the visible area once Safari chrome is accounted for.',
+          bodyHtml: '<p>Watch the panel footer relative to the home-indicator area. Collapse/expand the URL bar while this dialog is open.</p>'
+        },
+        {
+          id: '100svh',
+          label: '2 · height: 100svh',
+          desc: 'Overlay uses height: 100svh (small viewport height).',
+          expect: 'Expect: gap under footer after toolbar collapses mid-scroll (svh locked to smallest viewport).',
+          overlayClass: 'dlg-100svh',
+          panelTitle: '100svh overlay',
+          panelDesc: 'Small viewport unit — sized for toolbar-expanded state.',
+          bodyHtml: '<p>Scroll the page behind, collapse the toolbar, then re-open. A persistent gap below the footer is the common svh failure mode.</p>'
+        },
+        {
+          id: '100lvh',
+          label: '3 · height: 100lvh',
+          desc: 'Overlay uses height: 100lvh (large viewport height).',
+          expect: 'Expect: bottom flush when toolbar collapsed; top may clip while toolbar still expanded.',
+          overlayClass: 'dlg-100lvh',
+          panelTitle: '100lvh overlay',
+          panelDesc: 'Large viewport unit — sized for toolbar-collapsed state.',
+          bodyHtml: '<p>Open with toolbar expanded vs collapsed. Top clipping with expanded toolbar is the typical lvh trade-off.</p>'
+        },
+        {
+          id: '100dvh',
+          label: '4 · height: 100dvh',
+          desc: 'Overlay uses height: 100dvh (dynamic viewport height).',
+          expect: 'Expect: no permanent gap, but visible snap/jump when toolbar collapses or expands.',
+          overlayClass: 'dlg-100dvh',
+          panelTitle: '100dvh overlay',
+          panelDesc: 'Dynamic unit tracks toolbar — animates with chrome.',
+          bodyHtml: '<p>Should track the visible viewport, but the height change itself can cause a jarring jump. Compare to technique 6.</p>'
+        },
+        {
+          id: 'inset0',
+          label: '5 · inset: 0 (no height)',
+          desc: 'Overlay positioned with inset: 0 only — no explicit height.',
+          expect: 'Expect: generally good baseline; top/left/right/bottom pin to layout viewport edges.',
+          overlayClass: 'dlg-inset0',
+          panelTitle: 'inset: 0 baseline',
+          panelDesc: 'No vh/svh/dvh — just anchor all edges.',
+          bodyHtml: '<p>Often the most stable pure-CSS approach. Use as reference when judging the vh-unit techniques.</p>'
+        },
+        {
+          id: 'vv-corrected',
+          label: '6 · inset: 0 + visualViewport JS',
+          desc: 'inset: 0 plus JS sets height from visualViewport on resize/scroll.',
+          expect: 'Expect: fully corrected — panel stays flush with visible viewport through toolbar transitions.',
+          overlayClass: 'dlg-inset0 dlg-vv-corrected',
+          panelTitle: 'visualViewport corrected',
+          panelDesc: 'JS sets overlay top + height from visualViewport.',
+          bodyHtml: '<p>This dialog registers a visualViewport listener while open and sets <code>top</code> + <code>height</code> in px. Should eliminate gap and jump.</p>',
+          onOpen: function (root) { attachVvCorrection(root); },
+          onClose: function (root) { detachVvCorrection(root); }
+        },
+        {
+          id: 'backdrop-compare',
+          label: '7 · Backdrop: solid vs blur',
+          desc: 'Compare rgba dim vs backdrop-filter: blur() against Safari toolbar material.',
+          expect: 'Expect: blur may interact differently with semi-transparent toolbar chrome; solid rgba is opaque.',
+          overlayClass: 'dlg-inset0 dlg-backdrop-compare',
+          panelTitle: 'Backdrop material compare',
+          panelDesc: 'Top half: solid rgba. Bottom half: backdrop-filter blur.',
+          bodyHtml: '<p>Observe how each half blends with the URL bar area when collapsed/expanded. Note color bleed or double-blur artifacts.</p>',
+          extraBackdrop: '<div class="backdrop-split" data-backdrop-tap><div class="backdrop-half backdrop-half--solid">SOLID rgba(15,23,42,0.65)</div><div class="backdrop-half backdrop-half--blur">backdrop-filter: blur(12px)</div></div>'
+        },
+        {
+          id: 'safe-area',
+          label: '8 · Safe-area: with vs without',
+          desc: 'Footer padding-bottom: env(safe-area-inset-bottom) compared to none.',
+          expect: 'Expect: without safe-area, Confirm/Cancel sit under home indicator; with it, padded above.',
+          overlayClass: 'dlg-inset0',
+          panelTitle: 'Safe-area inset compare',
+          panelDesc: 'Mini footers below — left has safe-area padding, right does not.',
+          bodyHtml: '<div class="safe-area-compare"><div class="compare-row"><div class="compare-box"><div class="compare-box-label">WITH safe-area</div><div class="compare-box-footer with-safe">Footer buttons</div></div><div class="compare-box"><div class="compare-box-label">WITHOUT safe-area</div><div class="compare-box-footer">Footer buttons</div></div></div></div><p style="margin-top:0.5rem">The real dialog footer below uses safe-area. Compare feel vs the &ldquo;without&rdquo; mini box.</p>',
+          footerSafeArea: true
+        },
+        {
+          id: 'scroll-footer',
+          label: '9 · Footer: sticky-in-scroll vs outside',
+          desc: 'Sticky footer inside scroll container vs footer outside scroll flow.',
+          expect: 'Expect: sticky footer can hide under toolbar or jump; outside footer stays pinned to panel bottom.',
+          overlayClass: 'dlg-inset0',
+          panelTitle: 'Scrollable body footer compare',
+          panelDesc: 'Left: sticky footer inside scroll. Right: footer outside scroll area.',
+          bodyHtml: '<div class="scroll-compare"><div class="scroll-demo"><div class="scroll-demo-label">Sticky inside scroll</div><div class="scroll-demo-body"><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p><div class="scroll-demo-footer-sticky">Sticky footer</div><p>Line 7</p><p>Line 8</p></div></div><div class="scroll-demo"><div class="scroll-demo-label">Footer outside scroll</div><div class="scroll-demo-body"><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p></div><div class="scroll-demo-footer-outside">Outside footer</div></div></div><p style="margin-top:0.5rem">Scroll the left column while dialog is open. Note sticky footer behavior vs the fixed panel footer below.</p>',
+          tallBody: true
+        }
+      ];
+
+      /* ── Build cards ── */
+      var cardList = document.getElementById('cardList');
+      techniques.forEach(function (t) {
+        var li = document.createElement('li');
+        li.className = 'card';
+        li.innerHTML =
+          '<div class="card-label">' + t.label + '</div>' +
+          '<div class="card-desc">' + t.desc + '</div>' +
+          '<div class="card-expect">' + t.expect + '</div>' +
+          '<button type="button" data-open="' + t.id + '">Open dialog</button>';
+        cardList.appendChild(li);
+      });
+
+      /* ── Build dialogs ── */
+      var dialogMount = document.getElementById('dialogMount');
+      var openDialogId = null;
+      var vvCleanups = {};
+
+      function attachVvCorrection(root) {
+        function apply() {
+          var vv = window.visualViewport;
+          if (!vv) return;
+          root.style.top = vv.offsetTop + 'px';
+          root.style.height = vv.height + 'px';
+          root.style.left = '0';
+          root.style.right = '0';
+          root.style.bottom = 'auto';
+        }
+        apply();
+        var onVv = function () { apply(); };
+        window.visualViewport.addEventListener('resize', onVv);
+        window.visualViewport.addEventListener('scroll', onVv);
+        vvCleanups[root.id] = function () {
+          window.visualViewport.removeEventListener('resize', onVv);
+          window.visualViewport.removeEventListener('scroll', onVv);
+          root.style.top = '';
+          root.style.height = '';
+          root.style.bottom = '';
+        };
+      }
+
+      function detachVvCorrection(root) {
+        var fn = vvCleanups[root.id];
+        if (fn) { fn(); delete vvCleanups[root.id]; }
+      }
+
+      techniques.forEach(function (t) {
+        var root = document.createElement('div');
+        root.className = 'dialog-root ' + t.overlayClass;
+        root.id = 'dialog-' + t.id;
+        root.setAttribute('role', 'dialog');
+        root.setAttribute('aria-modal', 'true');
+        root.setAttribute('aria-hidden', 'true');
+
+        var backdropHtml = t.extraBackdrop
+          ? t.extraBackdrop
+          : '<div class="dialog-backdrop" data-backdrop-tap></div>';
+
+        var footerStyle = t.footerSafeArea
+          ? ' style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))"'
+          : '';
+
+        root.innerHTML =
+          backdropHtml +
+          '<div class="dialog-panel">' +
+            '<div class="dialog-panel-header">' +
+              '<div><h2>' + t.panelTitle + '</h2><p>' + t.panelDesc + '</p></div>' +
+              '<button type="button" class="dialog-close" data-close aria-label="Close">&times;</button>' +
+            '</div>' +
+            '<div class="dialog-body">' + t.bodyHtml + '</div>' +
+            '<div class="dialog-footer"' + footerStyle + '>' +
+              '<button type="button" data-close>Cancel</button>' +
+              '<button type="button" class="btn-confirm" data-close>Confirm</button>' +
+            '</div>' +
+          '</div>';
+
+        dialogMount.appendChild(root);
+        t._root = root;
+      });
+
+      function openDialog(id) {
+        if (openDialogId) closeDialog(openDialogId);
+        var t = techniques.find(function (x) { return x.id === id; });
+        if (!t) return;
+        var root = t._root;
+        root.classList.add('is-open');
+        root.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        openDialogId = id;
+        if (t.onOpen) t.onOpen(root);
+      }
+
+      function closeDialog(id) {
+        var t = techniques.find(function (x) { return x.id === id; });
+        if (!t) return;
+        var root = t._root;
+        if (t.onClose) t.onClose(root);
+        root.classList.remove('is-open');
+        root.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        if (openDialogId === id) openDialogId = null;
+      }
+
+      document.getElementById('cardList').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-open]');
+        if (btn) openDialog(btn.getAttribute('data-open'));
+      });
+
+      dialogMount.addEventListener('click', function (e) {
+        if (e.target.closest('[data-close]')) {
+          var root = e.target.closest('.dialog-root');
+          if (root) closeDialog(root.id.replace('dialog-', ''));
+          return;
+        }
+        if (e.target.closest('[data-backdrop-tap]') || e.target.classList.contains('dialog-backdrop')) {
+          var r = e.target.closest('.dialog-root');
+          if (r) closeDialog(r.id.replace('dialog-', ''));
+        }
+      });
+
+      /* ── Background chapters ── */
+      var chapters = [
+        {
+          id: 'ch-html-red',
+          tag: 'Chapter A',
+          title: 'background-color on &lt;html&gt; only',
+          className: 'ch-html-red',
+          target: 'html',
+          expectTop: 'On overscroll bounce at top: RED (#dc2626) from &lt;html&gt; should fill the status-bar strip.',
+          expectBottom: 'Behind collapsed/expanded URL bar: RED from &lt;html&gt; (body is neutral gray above this section).'
+        },
+        {
+          id: 'ch-body-teal',
+          tag: 'Chapter B',
+          title: 'background-color on &lt;body&gt; only',
+          className: 'ch-body-teal',
+          target: 'body',
+          bodyColor: '#0d9488',
+          expectTop: 'On bounce: TEAL (#0d9488) from &lt;body&gt; — html has no color of its own here.',
+          expectBottom: 'URL bar area: TEAL from &lt;body&gt; background.'
+        },
+        {
+          id: 'ch-fixed-purple',
+          tag: 'Chapter C',
+          title: 'Fixed inset:0 div background only',
+          className: 'ch-fixed-purple',
+          fixedBg: true,
+          expectTop: 'On bounce: PURPLE (#7c3aed) from the fixed full-bleed div (not html/body).',
+          expectBottom: 'URL bar area: PURPLE from the fixed div behind content.'
+        },
+        {
+          id: 'ch-html-img',
+          tag: 'Chapter D',
+          title: 'background-image on &lt;html&gt; (+ fallback color)',
+          className: 'ch-html-img',
+          target: 'html',
+          expectTop: 'On bounce: gradient/image from &lt;html&gt; extends into status-bar strip (may sample dominant color).',
+          expectBottom: 'URL bar area: gradient from &lt;html&gt; — watch if Safari flattens to a single sampled color.'
+        },
+        {
+          id: 'ch-body-img',
+          tag: 'Chapter E',
+          title: 'background-image on &lt;body&gt; only',
+          className: 'ch-body-img',
+          target: 'body',
+          bodyImage: 'linear-gradient(160deg, #06b6d4 0%, #4f46e5 100%)',
+          expectTop: 'On bounce: CYAN-INDIGO gradient from &lt;body&gt; visible at top strip.',
+          expectBottom: 'URL bar area: &lt;body&gt; gradient — compare sampling vs solid-color chapters.'
+        },
+        {
+          id: 'ch-html-vs-body',
+          tag: 'Chapter F',
+          title: 'Conflicting html (orange) vs body (pink) colors',
+          className: 'ch-html-vs-body',
+          target: 'both',
+          htmlColor: '#f59e0b',
+          bodyColor: '#ec4899',
+          expectTop: 'On bounce: likely ORANGE from &lt;html&gt; — Safari often prefers the root element.',
+          expectBottom: 'URL bar area: test which wins — note if PINK &lt;body&gt; or ORANGE &lt;html&gt; appears.'
+        },
+        {
+          id: 'ch-overscroll-none',
+          tag: 'Chapter G',
+          title: 'overscroll-behavior: none on chapter',
+          className: 'ch-overscroll-none',
+          overscrollNone: true,
+          expectTop: 'Bounce rubber-banding reduced/disabled — less reveal of any background in status-bar strip.',
+          expectBottom: 'URL bar area still shows GREEN (#059669) but edge bounce behavior differs from other chapters.'
+        }
+      ];
+
+      var chaptersEl = document.getElementById('chapters');
+      var savedHtmlBg = '';
+      var savedBodyBg = '';
+      var savedBodyOverscroll = '';
+      var activeChapterCleanup = null;
+
+      chapters.forEach(function (ch, i) {
+        var section = document.createElement('section');
+        section.className = 'chapter ' + ch.className;
+        section.id = ch.id;
+        section.dataset.chapterIndex = String(i);
+
+        var fixedBg = ch.fixedBg
+          ? '<div class="chapter-fixed-bg" aria-hidden="true"></div>'
+          : '';
+
+        section.innerHTML =
+          fixedBg +
+          '<div class="chapter-inner">' +
+            '<span class="chapter-tag">' + ch.tag + '</span>' +
+            '<h2>' + ch.title + '</h2>' +
+            '<p>Scroll into this chapter, then pull to bounce at top and bottom. Collapse/expand the Safari URL bar. No <code>theme-color</code> meta is present.</p>' +
+            '<div class="chapter-expect">' +
+              '<strong>Top strip (status bar / bounce):</strong> ' + ch.expectTop + '<br><br>' +
+              '<strong>Bottom (URL bar chrome):</strong> ' + ch.expectBottom +
+            '</div>' +
+          '</div>';
+
+        chaptersEl.appendChild(section);
+      });
+
+      function applyChapterStyles(ch) {
+        clearChapterStyles();
+        if (ch.target === 'html' || ch.target === 'both') {
+          if (ch.htmlColor) document.documentElement.style.backgroundColor = ch.htmlColor;
+          else if (ch.className === 'ch-html-red') document.documentElement.style.backgroundColor = '#dc2626';
+          else if (ch.className === 'ch-html-img') {
+            document.documentElement.style.backgroundColor = '#1e293b';
+            document.documentElement.style.backgroundImage = 'linear-gradient(135deg, #f97316 0%, #db2777 50%, #7c3aed 100%)';
+          }
+        }
+        if (ch.target === 'body' || ch.target === 'both') {
+          if (ch.bodyColor) document.body.style.backgroundColor = ch.bodyColor;
+          if (ch.bodyImage) {
+            document.body.style.backgroundImage = ch.bodyImage;
+            document.body.style.backgroundSize = 'cover';
+          }
+          if (ch.target === 'body' && ch.className === 'ch-body-teal') {
+            document.documentElement.style.backgroundColor = 'transparent';
+          }
+        }
+        if (ch.overscrollNone) {
+          document.body.style.overscrollBehavior = 'none';
+        }
+      }
+
+      function clearChapterStyles() {
+        document.documentElement.style.backgroundColor = savedHtmlBg;
+        document.documentElement.style.backgroundImage = '';
+        document.body.style.backgroundColor = savedBodyBg;
+        document.body.style.backgroundImage = '';
+        document.body.style.backgroundSize = '';
+        document.body.style.overscrollBehavior = savedBodyOverscroll;
+      }
+
+      savedHtmlBg = getComputedStyle(document.documentElement).backgroundColor;
+      savedBodyBg = getComputedStyle(document.body).backgroundColor;
+      savedBodyOverscroll = document.body.style.overscrollBehavior || '';
+
+      /* Apply chapter styles when scrolled into view */
+      var chapterSections = chaptersEl.querySelectorAll('.chapter');
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.4) {
+            var idx = parseInt(entry.target.dataset.chapterIndex, 10);
+            applyChapterStyles(chapters[idx]);
+          }
+        });
+      }, { threshold: [0.4, 0.6] });
+
+      chapterSections.forEach(function (el) { observer.observe(el); });
+
+      /* Reset styles when scrolling back to dialog section */
+      var dialogSectionObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) clearChapterStyles();
+        });
+      }, { threshold: 0.1 });
+      dialogSectionObserver.observe(document.querySelector('.page-header'));
+    })();
+  </script>
+</body>
+</html>
