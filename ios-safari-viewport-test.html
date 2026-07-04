@@ -43,15 +43,36 @@
       gap: 0.35rem 0.75rem;
       align-items: center;
       min-height: var(--stats-h);
-      padding: 0.4rem 0.75rem;
+      padding: calc(0.4rem + env(safe-area-inset-top, 0px)) 0.75rem 0.4rem;
       background: #0f172a;
       color: #e2e8f0;
       font-size: 0.7rem;
       font-variant-numeric: tabular-nums;
       border-bottom: 2px solid var(--accent);
+      transition: transform 0.25s ease;
+      transform: translateY(0);
+    }
+    .stats-bar.is-auto-hidden:not(.is-manual-show) {
+      transform: translateY(-110%);
     }
     .stats-bar strong { color: #93c5fd; font-weight: 600; }
     .stats-bar span { white-space: nowrap; }
+
+    .stats-pill {
+      position: fixed;
+      bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      left: 0.5rem;
+      z-index: 1001;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     /* ── Main content ── */
     .page-header {
@@ -125,6 +146,9 @@
       z-index: 2000;
       flex-direction: column;
       justify-content: flex-end;
+      /* Let touches pass through to the page so the user can scroll to
+         collapse the Safari toolbar while the dialog is open. */
+      pointer-events: none;
     }
     .dialog-root.is-open { display: flex; }
 
@@ -132,11 +156,13 @@
       position: absolute;
       inset: 0;
       background: var(--backdrop-dim);
+      pointer-events: none;
     }
 
     .dialog-panel {
       position: relative;
       z-index: 1;
+      pointer-events: auto;
       background: var(--panel-bg);
       border-radius: 1rem 1rem 0 0;
       box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
@@ -179,13 +205,21 @@
       color: var(--muted);
     }
 
+    .dialog-scroll-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.65rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--border);
+    }
+
     .dialog-footer {
       display: flex;
       gap: 0.5rem;
       padding: 0.75rem 1rem;
       border-top: 1px solid var(--border);
       flex-shrink: 0;
-      background: #fafafa;
+      background: #fff;
     }
     .dialog-footer button {
       flex: 1;
@@ -211,25 +245,51 @@
     .dlg-100dvh { inset: 0; height: 100dvh; }
     .dlg-inset0 { inset: 0; }
 
+    /* Technique 10: fade + 100dvh */
+    .dlg-fade {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .dlg-fade.is-open { display: flex; }
+    .dlg-fade.is-visible { opacity: 1; }
+    .dlg-fade .dialog-panel {
+      transform: translateY(24px);
+      transition: transform 0.3s ease;
+    }
+    .dlg-fade.is-visible .dialog-panel { transform: translateY(0); }
+
     /* Technique 7: backdrop compare */
     .dlg-backdrop-compare .dialog-backdrop { display: none; }
+    .dlg-backdrop-compare .dialog-panel { max-height: 30vh; }
     .backdrop-split {
       position: absolute;
       inset: 0;
       display: flex;
       flex-direction: column;
+      pointer-events: none;
     }
     .backdrop-half {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: #fff;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
       text-align: center;
-      padding: 0.5rem;
+      padding: 1rem;
+      pointer-events: none;
+      line-height: 1.35;
+    }
+    .backdrop-half-label {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      opacity: 0.85;
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .backdrop-half--solid { background: rgba(15, 23, 42, 0.65); }
     .backdrop-half--blur {
@@ -239,78 +299,80 @@
     }
 
     /* Technique 8: safe-area compare */
-    .safe-area-compare .compare-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    .compare-box {
-      border: 2px dashed var(--border);
-      border-radius: 0.5rem;
-      overflow: hidden;
+    .dlg-safe-area .dialog-body { flex: 0 1 auto; }
+    .safe-footer-compare { flex-shrink: 0; }
+    .safe-footer-block { border-top: 1px solid var(--border); }
+    .safe-footer-label {
+      padding: 0.4rem 1rem;
       font-size: 0.7rem;
-    }
-    .compare-box-label {
-      padding: 0.35rem;
-      background: #f1f5f9;
       font-weight: 700;
       text-align: center;
     }
-    .compare-box-footer {
-      padding: 0.5rem;
-      background: #e2e8f0;
-      text-align: center;
-      font-weight: 600;
+    .safe-footer-block--no .safe-footer-label { background: #fecaca; color: #991b1b; }
+    .safe-footer-block--yes .safe-footer-label { background: #bbf7d0; color: #166534; }
+    .safe-footer-row {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
     }
-    .compare-box-footer.with-safe {
-      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    .safe-footer-block--no .safe-footer-row { background: #fee2e2; }
+    .safe-footer-block--yes .safe-footer-row {
+      background: #dcfce7;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    .safe-footer-row button {
+      flex: 1;
+      padding: 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 0.45rem;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .safe-footer-row .btn-confirm {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
     }
 
     /* Technique 9: scrollable footer compare */
-    .scroll-compare {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    .scroll-demo {
-      border: 2px dashed var(--border);
-      border-radius: 0.5rem;
-      height: 140px;
-      display: flex;
-      flex-direction: column;
+    .dlg-scroll-footer .dialog-body {
+      flex: 0 1 auto;
       overflow: hidden;
-      font-size: 0.65rem;
+      padding: 0;
     }
-    .scroll-demo-label {
-      padding: 0.3rem;
-      background: #f1f5f9;
-      font-weight: 700;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .scroll-demo-body {
-      flex: 1;
+    .scroll-footer-inner {
+      height: 40vh;
       overflow-y: auto;
-      padding: 0.35rem;
-      background: #fff;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
     }
-    .scroll-demo-body p { margin-bottom: 0.5rem; }
-    .scroll-demo-footer-outside {
-      padding: 0.35rem;
-      background: #cbd5e1;
-      text-align: center;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .scroll-demo-footer-sticky {
+    .scroll-footer-inner p { margin-bottom: 0.65rem; }
+    .scroll-footer-sticky {
       position: sticky;
       bottom: 0;
-      padding: 0.35rem;
-      background: #cbd5e1;
+      margin: 0.5rem -1rem 0;
+      padding: 0.55rem 1rem;
+      background: #fef3c7;
+      border-top: 2px solid #f59e0b;
+      font-size: 0.75rem;
+      font-weight: 700;
       text-align: center;
-      font-weight: 600;
+      color: #92400e;
+    }
+    .dlg-scroll-footer .dialog-scroll-hint {
+      margin: 0.5rem 1rem 0.65rem;
+    }
+    .outside-footer-caption {
+      padding: 0.35rem 1rem 0;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+      flex-shrink: 0;
     }
 
     /* ── Background chapters section ── */
@@ -368,36 +430,7 @@
       color: #fff;
     }
 
-    /* Chapter backgrounds applied via classes on chapter elements */
-    .ch-html-red { background-color: #dc2626; }
-    .ch-body-teal { background-color: #0d9488; }
-    .ch-fixed-purple .chapter-fixed-bg {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background-color: #7c3aed;
-      pointer-events: none;
-    }
-    .ch-html-img {
-      background-color: #1e293b;
-      background-image: linear-gradient(135deg, #f97316 0%, #db2777 50%, #7c3aed 100%);
-      background-size: cover;
-      background-attachment: fixed;
-    }
-    .ch-body-img {
-      background-color: transparent;
-    }
-    .ch-body-img .chapter-inner { background: transparent; }
-    .ch-body-img-body {
-      /* body bg set via JS when entering chapter */
-    }
-    .ch-overscroll-none {
-      overscroll-behavior: none;
-      background-color: #059669;
-    }
-    .ch-html-vs-body {
-      background-color: #f59e0b;
-    }
+    /* Chapter sections are transparent — backgrounds applied via JS on html/body/fixed div */
     .ch-html-vs-body .chapter-note code {
       background: rgba(0,0,0,0.2);
       padding: 0.1rem 0.3rem;
@@ -418,7 +451,7 @@
 
   <header class="page-header">
     <h1>iOS Safari Viewport Test</h1>
-    <p>Real iPhone Safari only. Scroll, collapse the URL bar, open dialogs, note gaps/jumps. Log findings by technique label.</p>
+    <p>Real iPhone Safari only. Scroll, collapse the URL bar, open dialogs, note gaps/jumps. Log findings by technique label. Note: iOS colors the URL-bar chrome by sampling the bottommost rendered pixels — with a dialog open that's the sheet footer.</p>
   </header>
 
   <h2 class="section-title">Dialog positioning techniques</h2>
@@ -433,6 +466,8 @@
 
   <!-- Dialog templates injected by JS -->
   <div id="dialogMount"></div>
+
+  <button type="button" class="stats-pill" id="statsPill" aria-label="Toggle stats bar">stats</button>
 
   <script>
     (function () {
@@ -459,6 +494,32 @@
         window.visualViewport.addEventListener('scroll', updateStats);
       }
       updateStats();
+
+      /* ── Stats bar auto-hide in chapters ── */
+      var statsBarEl = document.getElementById('statsBar');
+      var statsPill = document.getElementById('statsPill');
+
+      var chaptersIntroObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            statsBarEl.classList.add('is-auto-hidden');
+          } else {
+            statsBarEl.classList.remove('is-auto-hidden');
+            statsBarEl.classList.remove('is-manual-show');
+          }
+        });
+      }, { threshold: 0 });
+
+      /* Observe the whole chapters container, not just the intro — the bar
+         must stay hidden while ANY chapter is on screen. */
+      var chaptersContainerEl = document.getElementById('chapters');
+      if (chaptersContainerEl) chaptersIntroObserver.observe(chaptersContainerEl);
+
+      statsPill.addEventListener('click', function () {
+        statsBarEl.classList.toggle('is-manual-show');
+      });
+
+      var scrollHintHtml = '<p class="dialog-scroll-hint">Scroll the dimmed page behind this sheet to collapse/expand the Safari toolbar, then watch the panel edges.</p>';
 
       /* ── Dialog technique definitions ── */
       var techniques = [
@@ -527,35 +588,70 @@
         {
           id: 'backdrop-compare',
           label: '7 · Backdrop: solid vs blur',
-          desc: 'Compare rgba dim vs backdrop-filter: blur() against Safari toolbar material.',
+          desc: 'Compare how the dim vs blur backdrop visually meets Safari\'s translucent toolbar at the bottom edge. Scroll behind to collapse the toolbar and watch the seam.',
           expect: 'Expect: blur may interact differently with semi-transparent toolbar chrome; solid rgba is opaque.',
           overlayClass: 'dlg-inset0 dlg-backdrop-compare',
           panelTitle: 'Backdrop material compare',
-          panelDesc: 'Top half: solid rgba. Bottom half: backdrop-filter blur.',
-          bodyHtml: '<p>Observe how each half blends with the URL bar area when collapsed/expanded. Note color bleed or double-blur artifacts.</p>',
-          extraBackdrop: '<div class="backdrop-split" data-backdrop-tap><div class="backdrop-half backdrop-half--solid">SOLID rgba(15,23,42,0.65)</div><div class="backdrop-half backdrop-half--blur">backdrop-filter: blur(12px)</div></div>'
+          panelDesc: 'Compare how the dim vs blur backdrop visually meets Safari\'s translucent toolbar at the bottom edge. Scroll behind to collapse the toolbar and watch the seam.',
+          bodyHtml: '<p>Top half uses solid rgba dimming; bottom half uses backdrop-filter blur with a light tint. The short panel below leaves the blur half visible above it.</p>',
+          extraBackdrop: '<div class="backdrop-split"><div class="backdrop-half backdrop-half--solid"><span class="backdrop-half-label">Top half</span>TOP HALF: solid rgba(15,23,42,0.65)</div><div class="backdrop-half backdrop-half--blur"><span class="backdrop-half-label">Bottom half</span>BOTTOM HALF: backdrop-filter: blur(12px) + light tint</div></div>'
         },
         {
           id: 'safe-area',
           label: '8 · Safe-area: with vs without',
-          desc: 'Footer padding-bottom: env(safe-area-inset-bottom) compared to none.',
+          desc: 'Two identical button rows stacked at the sheet bottom. The red one ignores the home-indicator safe area; the green one pads for it. On a Face ID iPhone the red row\'s buttons sit under/too close to the home indicator.',
           expect: 'Expect: without safe-area, Confirm/Cancel sit under home indicator; with it, padded above.',
-          overlayClass: 'dlg-inset0',
+          overlayClass: 'dlg-inset0 dlg-safe-area',
           panelTitle: 'Safe-area inset compare',
-          panelDesc: 'Mini footers below — left has safe-area padding, right does not.',
-          bodyHtml: '<div class="safe-area-compare"><div class="compare-row"><div class="compare-box"><div class="compare-box-label">WITH safe-area</div><div class="compare-box-footer with-safe">Footer buttons</div></div><div class="compare-box"><div class="compare-box-label">WITHOUT safe-area</div><div class="compare-box-footer">Footer buttons</div></div></div></div><p style="margin-top:0.5rem">The real dialog footer below uses safe-area. Compare feel vs the &ldquo;without&rdquo; mini box.</p>',
-          footerSafeArea: true
+          panelDesc: 'Two identical button rows stacked at the sheet bottom. The red one ignores the home-indicator safe area; the green one pads for it. On a Face ID iPhone the red row\'s buttons sit under/too close to the home indicator.',
+          bodyHtml: '<p>Footer A (red) has no safe-area padding. Footer B (green) adds <code>padding-bottom: calc(0.75rem + env(safe-area-inset-bottom))</code>. Both rows close the dialog.</p>',
+          noFooter: true,
+          extraFooters: '<div class="safe-footer-compare">' +
+            '<div class="safe-footer-block safe-footer-block--no">' +
+              '<div class="safe-footer-label">WITHOUT safe-area padding</div>' +
+              '<div class="safe-footer-row">' +
+                '<button type="button" data-close>Cancel</button>' +
+                '<button type="button" class="btn-confirm" data-close>Confirm</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="safe-footer-block safe-footer-block--yes">' +
+              '<div class="safe-footer-label">WITH env(safe-area-inset-bottom)</div>' +
+              '<div class="safe-footer-row">' +
+                '<button type="button" data-close>Cancel</button>' +
+                '<button type="button" class="btn-confirm" data-close>Confirm</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
         },
         {
           id: 'scroll-footer',
           label: '9 · Footer: sticky-in-scroll vs outside',
-          desc: 'Sticky footer inside scroll container vs footer outside scroll flow.',
+          desc: 'One scroll area with a sticky footer inside it, plus the regular footer outside it. Scroll the inner list AND scroll the page behind to collapse the toolbar — compare which footer stays put and which jumps.',
           expect: 'Expect: sticky footer can hide under toolbar or jump; outside footer stays pinned to panel bottom.',
-          overlayClass: 'dlg-inset0',
+          overlayClass: 'dlg-inset0 dlg-scroll-footer',
           panelTitle: 'Scrollable body footer compare',
-          panelDesc: 'Left: sticky footer inside scroll. Right: footer outside scroll area.',
-          bodyHtml: '<div class="scroll-compare"><div class="scroll-demo"><div class="scroll-demo-label">Sticky inside scroll</div><div class="scroll-demo-body"><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p><div class="scroll-demo-footer-sticky">Sticky footer</div><p>Line 7</p><p>Line 8</p></div></div><div class="scroll-demo"><div class="scroll-demo-label">Footer outside scroll</div><div class="scroll-demo-body"><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p></div><div class="scroll-demo-footer-outside">Outside footer</div></div></div><p style="margin-top:0.5rem">Scroll the left column while dialog is open. Note sticky footer behavior vs the fixed panel footer below.</p>',
-          tallBody: true
+          panelDesc: 'One scroll area with a sticky footer inside it, plus the regular footer outside it. Scroll the inner list AND scroll the page behind to collapse the toolbar — compare which footer stays put and which jumps.',
+          bodyHtml: (function () {
+            var paras = '';
+            for (var i = 1; i <= 15; i++) {
+              paras += '<p>' + i + '. Filler paragraph — scroll this inner list while also scrolling the page behind to collapse the Safari toolbar.</p>';
+            }
+            return '<div class="scroll-footer-inner">' + paras +
+              '<div class="scroll-footer-sticky">STICKY footer (inside the scroll container)</div>' +
+            '</div>';
+          })(),
+          outsideFooterCaption: true
+        },
+        {
+          id: 'fade-dvh',
+          label: '10 · 100dvh + fade transition',
+          desc: 'Overlay uses height: 100dvh with fade-in/out transition on open and close.',
+          expect: 'Expect: fade-in/out works, but watch whether the 100dvh height snaps mid-transition when the toolbar state changes during the animation.',
+          overlayClass: 'dlg-100dvh dlg-fade',
+          panelTitle: '100dvh + fade transition',
+          panelDesc: 'Fade and slide-up on open; reverse on close. Height tracks dynamic viewport.',
+          bodyHtml: '<p>Open and close repeatedly while collapsing/expanding the toolbar mid-animation. Watch for height snaps during the 0.3s transition.</p>',
+          animated: true
         }
       ];
 
@@ -597,6 +693,8 @@
           root.style.top = '';
           root.style.height = '';
           root.style.bottom = '';
+          root.style.left = '';
+          root.style.right = '';
         };
       }
 
@@ -615,11 +713,22 @@
 
         var backdropHtml = t.extraBackdrop
           ? t.extraBackdrop
-          : '<div class="dialog-backdrop" data-backdrop-tap></div>';
+          : '<div class="dialog-backdrop"></div>';
 
-        var footerStyle = t.footerSafeArea
-          ? ' style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))"'
-          : '';
+        var footerHtml = '';
+        if (!t.noFooter) {
+          var footerStyle = t.footerSafeArea
+            ? ' style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))"'
+            : '';
+          footerHtml =
+            (t.outsideFooterCaption ? '<p class="outside-footer-caption">OUTSIDE footer (below the scroll container)</p>' : '') +
+            '<div class="dialog-footer"' + footerStyle + '>' +
+              '<button type="button" data-close>Cancel</button>' +
+              '<button type="button" class="btn-confirm" data-close>Confirm</button>' +
+            '</div>';
+        } else if (t.extraFooters) {
+          footerHtml = t.extraFooters;
+        }
 
         root.innerHTML =
           backdropHtml +
@@ -628,11 +737,8 @@
               '<div><h2>' + t.panelTitle + '</h2><p>' + t.panelDesc + '</p></div>' +
               '<button type="button" class="dialog-close" data-close aria-label="Close">&times;</button>' +
             '</div>' +
-            '<div class="dialog-body">' + t.bodyHtml + '</div>' +
-            '<div class="dialog-footer"' + footerStyle + '>' +
-              '<button type="button" data-close>Cancel</button>' +
-              '<button type="button" class="btn-confirm" data-close>Confirm</button>' +
-            '</div>' +
+            '<div class="dialog-body">' + t.bodyHtml + scrollHintHtml + '</div>' +
+            footerHtml +
           '</div>';
 
         dialogMount.appendChild(root);
@@ -640,26 +746,54 @@
       });
 
       function openDialog(id) {
-        if (openDialogId) closeDialog(openDialogId);
+        if (openDialogId) closeDialog(openDialogId, true);
         var t = techniques.find(function (x) { return x.id === id; });
         if (!t) return;
         var root = t._root;
-        root.classList.add('is-open');
+        if (t.animated) {
+          root.classList.add('is-open');
+          void root.offsetHeight;
+          root.classList.add('is-visible');
+        } else {
+          root.classList.add('is-open');
+        }
         root.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
         openDialogId = id;
         if (t.onOpen) t.onOpen(root);
       }
 
-      function closeDialog(id) {
+      function closeDialog(id, immediate) {
         var t = techniques.find(function (x) { return x.id === id; });
         if (!t) return;
         var root = t._root;
-        if (t.onClose) t.onClose(root);
-        root.classList.remove('is-open');
-        root.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-        if (openDialogId === id) openDialogId = null;
+
+        function finishClose() {
+          if (t.onClose) t.onClose(root);
+          root.classList.remove('is-open', 'is-visible');
+          root.setAttribute('aria-hidden', 'true');
+          if (openDialogId === id) openDialogId = null;
+        }
+
+        if (!immediate && t.animated && root.classList.contains('is-visible')) {
+          root.classList.remove('is-visible');
+          var closed = false;
+          var onEnd = function (e) {
+            if (closed || e.target !== root) return;
+            closed = true;
+            root.removeEventListener('transitionend', onEnd);
+            finishClose();
+          };
+          root.addEventListener('transitionend', onEnd);
+          setTimeout(function () {
+            if (!closed) {
+              closed = true;
+              root.removeEventListener('transitionend', onEnd);
+              finishClose();
+            }
+          }, 350);
+        } else {
+          finishClose();
+        }
       }
 
       document.getElementById('cardList').addEventListener('click', function (e) {
@@ -671,11 +805,6 @@
         if (e.target.closest('[data-close]')) {
           var root = e.target.closest('.dialog-root');
           if (root) closeDialog(root.id.replace('dialog-', ''));
-          return;
-        }
-        if (e.target.closest('[data-backdrop-tap]') || e.target.classList.contains('dialog-backdrop')) {
-          var r = e.target.closest('.dialog-root');
-          if (r) closeDialog(r.id.replace('dialog-', ''));
         }
       });
 
@@ -686,7 +815,8 @@
           tag: 'Chapter A',
           title: 'background-color on &lt;html&gt; only',
           className: 'ch-html-red',
-          target: 'html',
+          htmlColor: '#dc2626',
+          bodyTransparent: true,
           expectTop: 'On overscroll bounce at top: RED (#dc2626) from &lt;html&gt; should fill the status-bar strip.',
           expectBottom: 'Behind collapsed/expanded URL bar: RED from &lt;html&gt; (body is neutral gray above this section).'
         },
@@ -695,8 +825,8 @@
           tag: 'Chapter B',
           title: 'background-color on &lt;body&gt; only',
           className: 'ch-body-teal',
-          target: 'body',
           bodyColor: '#0d9488',
+          htmlTransparent: true,
           expectTop: 'On bounce: TEAL (#0d9488) from &lt;body&gt; — html has no color of its own here.',
           expectBottom: 'URL bar area: TEAL from &lt;body&gt; background.'
         },
@@ -705,7 +835,9 @@
           tag: 'Chapter C',
           title: 'Fixed inset:0 div background only',
           className: 'ch-fixed-purple',
-          fixedBg: true,
+          fixedDiv: '#7c3aed',
+          htmlTransparent: true,
+          bodyTransparent: true,
           expectTop: 'On bounce: PURPLE (#7c3aed) from the fixed full-bleed div (not html/body).',
           expectBottom: 'URL bar area: PURPLE from the fixed div behind content.'
         },
@@ -714,7 +846,9 @@
           tag: 'Chapter D',
           title: 'background-image on &lt;html&gt; (+ fallback color)',
           className: 'ch-html-img',
-          target: 'html',
+          htmlColor: '#1e293b',
+          htmlImage: 'linear-gradient(135deg, #f97316 0%, #db2777 50%, #7c3aed 100%)',
+          bodyTransparent: true,
           expectTop: 'On bounce: gradient/image from &lt;html&gt; extends into status-bar strip (may sample dominant color).',
           expectBottom: 'URL bar area: gradient from &lt;html&gt; — watch if Safari flattens to a single sampled color.'
         },
@@ -723,8 +857,8 @@
           tag: 'Chapter E',
           title: 'background-image on &lt;body&gt; only',
           className: 'ch-body-img',
-          target: 'body',
           bodyImage: 'linear-gradient(160deg, #06b6d4 0%, #4f46e5 100%)',
+          htmlTransparent: true,
           expectTop: 'On bounce: CYAN-INDIGO gradient from &lt;body&gt; visible at top strip.',
           expectBottom: 'URL bar area: &lt;body&gt; gradient — compare sampling vs solid-color chapters.'
         },
@@ -733,7 +867,6 @@
           tag: 'Chapter F',
           title: 'Conflicting html (orange) vs body (pink) colors',
           className: 'ch-html-vs-body',
-          target: 'both',
           htmlColor: '#f59e0b',
           bodyColor: '#ec4899',
           expectTop: 'On bounce: likely ORANGE from &lt;html&gt; — Safari often prefers the root element.',
@@ -745,6 +878,8 @@
           title: 'overscroll-behavior: none on chapter',
           className: 'ch-overscroll-none',
           overscrollNone: true,
+          bodyColor: '#059669',
+          htmlTransparent: true,
           expectTop: 'Bounce rubber-banding reduced/disabled — less reveal of any background in status-bar strip.',
           expectBottom: 'URL bar area still shows GREEN (#059669) but edge bounce behavior differs from other chapters.'
         }
@@ -754,7 +889,7 @@
       var savedHtmlBg = '';
       var savedBodyBg = '';
       var savedBodyOverscroll = '';
-      var activeChapterCleanup = null;
+      var activeFixedBg = null;
 
       chapters.forEach(function (ch, i) {
         var section = document.createElement('section');
@@ -762,12 +897,7 @@
         section.id = ch.id;
         section.dataset.chapterIndex = String(i);
 
-        var fixedBg = ch.fixedBg
-          ? '<div class="chapter-fixed-bg" aria-hidden="true"></div>'
-          : '';
-
         section.innerHTML =
-          fixedBg +
           '<div class="chapter-inner">' +
             '<span class="chapter-tag">' + ch.tag + '</span>' +
             '<h2>' + ch.title + '</h2>' +
@@ -783,32 +913,53 @@
 
       function applyChapterStyles(ch) {
         clearChapterStyles();
-        if (ch.target === 'html' || ch.target === 'both') {
-          if (ch.htmlColor) document.documentElement.style.backgroundColor = ch.htmlColor;
-          else if (ch.className === 'ch-html-red') document.documentElement.style.backgroundColor = '#dc2626';
-          else if (ch.className === 'ch-html-img') {
-            document.documentElement.style.backgroundColor = '#1e293b';
-            document.documentElement.style.backgroundImage = 'linear-gradient(135deg, #f97316 0%, #db2777 50%, #7c3aed 100%)';
-          }
+
+        if (ch.htmlColor) {
+          document.documentElement.style.backgroundColor = ch.htmlColor;
+        } else if (ch.htmlTransparent) {
+          document.documentElement.style.backgroundColor = 'transparent';
         }
-        if (ch.target === 'body' || ch.target === 'both') {
-          if (ch.bodyColor) document.body.style.backgroundColor = ch.bodyColor;
-          if (ch.bodyImage) {
-            document.body.style.backgroundImage = ch.bodyImage;
-            document.body.style.backgroundSize = 'cover';
-          }
-          if (ch.target === 'body' && ch.className === 'ch-body-teal') {
-            document.documentElement.style.backgroundColor = 'transparent';
-          }
+
+        if (ch.htmlImage) {
+          document.documentElement.style.backgroundImage = ch.htmlImage;
+          document.documentElement.style.backgroundSize = 'cover';
+          document.documentElement.style.backgroundAttachment = 'fixed';
         }
+
+        if (ch.bodyColor) {
+          document.body.style.backgroundColor = ch.bodyColor;
+        } else if (ch.bodyTransparent) {
+          document.body.style.backgroundColor = 'transparent';
+        }
+
+        if (ch.bodyImage) {
+          document.body.style.backgroundImage = ch.bodyImage;
+          document.body.style.backgroundSize = 'cover';
+        }
+
         if (ch.overscrollNone) {
           document.body.style.overscrollBehavior = 'none';
+        }
+
+        if (ch.fixedDiv) {
+          var div = document.createElement('div');
+          div.className = 'chapter-fixed-bg';
+          div.setAttribute('aria-hidden', 'true');
+          div.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background:' + ch.fixedDiv;
+          document.body.appendChild(div);
+          activeFixedBg = div;
         }
       }
 
       function clearChapterStyles() {
+        if (activeFixedBg) {
+          activeFixedBg.remove();
+          activeFixedBg = null;
+        }
         document.documentElement.style.backgroundColor = savedHtmlBg;
         document.documentElement.style.backgroundImage = '';
+        document.documentElement.style.backgroundSize = '';
+        document.documentElement.style.backgroundAttachment = '';
         document.body.style.backgroundColor = savedBodyBg;
         document.body.style.backgroundImage = '';
         document.body.style.backgroundSize = '';
